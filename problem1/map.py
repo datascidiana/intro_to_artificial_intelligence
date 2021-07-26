@@ -1,0 +1,111 @@
+import search
+from search import Graph, GraphProblem
+import sys
+
+class TravelProblem(search.GraphProblem):
+
+    def __init__(self, initial, goal, graph, heuristic):
+        super().__init__(initial, goal, graph)
+        self.heuristic = heuristic
+
+    def h(self, node):
+        """h function is straight-line distance from a node's state to goal."""
+        return self.heuristic[node.state]
+
+def readfile(input_file):
+    graph = {}
+    heuristic = {}
+    i = 0
+
+    with open(input_file, 'r') as file:
+        #the file read as a list split on misplaced
+        file_list = [line.split() for line in file]
+        #skipping the comments
+        while(file_list[i][0] == '#'):
+            i += 1
+        #making the graph
+        while(file_list[i][0] != '#'):
+            if(file_list[i][2] == '<>'):
+                if(graph.get(file_list[i][1], -1) == -1):
+                    graph[file_list[i][1]] = {}
+                graph[file_list[i][1]][file_list[i][0]] = int(file_list[i][3])
+            if(graph.get(file_list[i][0], -1) == -1):
+                graph[file_list[i][0]] = {}
+            graph[file_list[i][0]][file_list[i][1]] = int(file_list[i][3])
+            i += 1
+        #start and goal
+        start = file_list[i+1][0]
+        goal = file_list[i+1][1]
+        #heuristics
+        heuristic = {h[0]:int(h[1]) for h in file_list[i+3:]}
+
+    return start, goal, graph, heuristic
+
+def UCTS(problem):
+    f = lambda node: node.path_cost
+    node = search.Node(problem.initial)
+    frontier = search.PriorityQueue('min', f)
+    frontier.append(node)
+    while frontier:
+        node = frontier.pop()
+        if problem.goal_test(node.state):
+            return node
+        frontier.extend(node.expand(problem))
+    return None
+
+def ASTS(problem):
+    f = lambda node: problem.h(node) + node.path_cost
+    node = search.Node(problem.initial)
+    frontier = search.PriorityQueue('min', f)
+    frontier.append(node)
+    while frontier:
+        node = frontier.pop()
+        if problem.goal_test(node.state):
+            return node
+        frontier.extend(node.expand(problem))
+    return None
+
+def GBFTS(problem):
+    f = lambda node: problem.h(node)
+    node = search.Node(problem.initial)
+    frontier = search.PriorityQueue('min', f)
+    frontier.append(node)
+    while frontier:
+        node = frontier.pop()
+        if problem.goal_test(node.state):
+            return node
+        frontier.extend(node.expand(problem))
+    return None
+
+def GBFGS(problem):
+    return search.best_first_graph_search(problem, problem.h)
+
+if __name__ == '__main__':
+
+    input_file = sys.argv[1]
+    search_algo_str = sys.argv[2]
+    algo_dict = {
+        'DFTS': getattr(search, 'depth_first_tree_search'),
+        'DFGS': getattr(search, 'depth_first_graph_search'),
+        'BFTS': getattr(search, 'breadth_first_tree_search'),
+        'BFGS': getattr(search, 'breadth_first_graph_search'),
+        'GBFGS': GBFGS,
+        'ASGS': getattr(search, 'astar_search'),
+        'UCTS': UCTS,
+        'UCGS': getattr(search, 'uniform_cost_search'),
+        'ASTS': ASTS,
+        'GBFTS': GBFTS
+        }
+
+    start, goal, graph, heuristic = readfile(input_file)
+
+    problem = TravelProblem(start, goal, Graph(graph_dict = graph), heuristic)
+    method_to_call = algo_dict.get(search_algo_str)
+    goal_node = method_to_call(problem)
+
+    # Do not change the code below.
+    if goal_node is not None:
+    	print("Solution path", goal_node.solution())
+    	print("Solution cost", goal_node.path_cost)
+    else:
+    	print("No solution was found.")
